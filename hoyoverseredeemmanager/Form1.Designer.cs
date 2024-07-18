@@ -96,6 +96,7 @@
             tb_codes.Name = "tb_codes";
             tb_codes.Size = new Size(160, 23);
             tb_codes.TabIndex = 2;
+            tb_codes.KeyDown += tb_codes_KeyDown;
             // 
             // label2
             // 
@@ -223,7 +224,7 @@
             label4.Name = "label4";
             label4.Size = new Size(208, 36);
             label4.TabIndex = 3;
-            label4.Text = "Version 1.000 HSE-704\r\nDeveloped by Unidentified Unit.\r\nThis software is NOT a official HoYoverse product.";
+            label4.Text = "Version 1.001 HSE-719\r\nDeveloped by Unidentified Unit.\r\nThis software is NOT a official HoYoverse product.";
             // 
             // pbx_launcher
             // 

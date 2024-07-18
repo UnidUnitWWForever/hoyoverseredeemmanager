@@ -43,11 +43,11 @@ namespace hoyoverseredeemmanager
             }
 
         }
-        
+
         //열 누르면 정렬
         private void lvw_codes_ColumnClick(object sender, ColumnClickEventArgs e)
         {
-            
+
         }
 
         //코드 추가
@@ -59,11 +59,20 @@ namespace hoyoverseredeemmanager
             }
             catch (Exception ex)
             {
-                MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n"+ex+"\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n" + ex + "\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
 
-            
+
+        }
+
+        //코드 추가(엔터키)
+        private void tb_codes_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                btn_add_Click(sender, e);
+            }
         }
 
         //선택한 코드 사용
@@ -78,7 +87,7 @@ namespace hoyoverseredeemmanager
                 MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n" + ex + "\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
-            
+
         }
 
         //URL 복사
@@ -93,7 +102,7 @@ namespace hoyoverseredeemmanager
                 MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n" + ex + "\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
-            
+
         }
 
         //엑셀 CSV 내보내기
@@ -108,7 +117,7 @@ namespace hoyoverseredeemmanager
                 MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n" + ex + "\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
-            
+
         }
 
         //삭제
@@ -142,11 +151,38 @@ namespace hoyoverseredeemmanager
             //영숫자만 허용
             if (Regex.IsMatch(hyb_codes, @"^[a-zA-Z0-9]+$") == true)
             {
+
                 //대문자로
                 string hyb_c_upper = hyb_codes.ToUpper();
 
-                //리스트에 추가
-                string[] rcodes = { hyb_games, hyb_c_upper };
+                //중복입력 방지용
+                ListViewItem found_data = lvw_codes.FindItemWithText(hyb_c_upper);//검색 데이터
+
+                if (found_data != null)
+                {
+                    string found_game = found_data.SubItems[0].Text; //검색된 게임
+                    string found_code = found_data.SubItems[1].Text; //검색된 코드
+
+                    //등록할 게임의 코드가 게임명과 코드가 같을경우 경고메시지 내보내고 중단. 아닐 경우 등록
+                    if (found_game == hyb_games && found_code == hyb_c_upper)
+                    {
+                        MessageBox.Show("추가하려는 \"" + found_game + "\"의 \"" + found_code + "\" 코드는 \n이미 추가된 리딤코드입니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        goto clearcodefield;
+                    }
+                    else
+                    {
+                        //목록추가로 점프
+                        goto addlist;
+                    }
+                }
+                else
+                {
+                    goto addlist;
+                }
+
+            //리스트에 추가
+            addlist:
+                string[] rcodes = [hyb_games, hyb_c_upper];
                 ListViewItem rclview = new ListViewItem(rcodes);
 
                 lvw_codes.Items.Add(rclview);
@@ -154,7 +190,8 @@ namespace hoyoverseredeemmanager
                 //데이터 파일에 저장
                 writefile();
 
-                //리딤코드 입력창 비우기
+            //리딤코드 입력창 비우기
+            clearcodefield:
                 tb_codes.Clear();
 
             }
@@ -210,7 +247,7 @@ namespace hoyoverseredeemmanager
         {
             if (save_csv.ShowDialog() == DialogResult.OK)
             {
-                using(StreamWriter csvwrt = new StreamWriter(save_csv.FileName, false, Encoding.UTF8))
+                using (StreamWriter csvwrt = new StreamWriter(save_csv.FileName, false, Encoding.UTF8))
                 {
                     //열 제목
                     csvwrt.WriteLine("게임,리딤코드");
@@ -229,7 +266,7 @@ namespace hoyoverseredeemmanager
         public void get_redeem(string exec_mode)
         {
             //선택한 정보 가져오기
-            if(lvw_codes.SelectedItems.Count != 0)
+            if (lvw_codes.SelectedItems.Count != 0)
             {
                 // URL용 변수
                 string red_url = string.Empty;
@@ -254,18 +291,18 @@ namespace hoyoverseredeemmanager
                 }
 
                 //실행모드
-                if(exec_mode == "use_code")
+                if (exec_mode == "use_code")
                 {
                     //웹페이지 띄우기(기본 브라우저로 설정한 브라우저로 리딤코드 페이지 열기)
                     Process.Start(new ProcessStartInfo { FileName = red_url, UseShellExecute = true });
                 }
-                else if(exec_mode == "copy_clip")
+                else if (exec_mode == "copy_clip")
                 {
                     //클립보드 복사
                     Clipboard.SetText(red_url);
                     MessageBox.Show("리딤코드 등록 URL을 클립보드에 복사하였습니다.\n친구의 메신저 대화창 또는 SNS게시물에 붙여넣으십시오.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-                
+
             }
             else
             {
@@ -292,7 +329,7 @@ namespace hoyoverseredeemmanager
                 MessageBox.Show("선택한 리딤코드가 없습니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
-            
-       
+
+        
     }
 }
