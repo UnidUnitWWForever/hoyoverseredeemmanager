@@ -55,7 +55,7 @@ namespace hoyoverseredeemmanager
         {
             try
             {
-                add_code(cbx_games.Text, tb_codes.Text);
+                add_code(cbx_games.Text, tb_codes.Text, tb_desc.Text);
             }
             catch (Exception ex)
             {
@@ -105,6 +105,20 @@ namespace hoyoverseredeemmanager
 
         }
 
+        //엑셀 CSV 가져오기
+        private void btn_loadcsv_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                load_csv_file();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("작업 중 치명적인 오류가 발생하였습니다:\n" + ex + "\n\n프로그램이 종료되며, 저장하지 않은 정보는 손실됩니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+            }
+        }
+
         //엑셀 CSV 내보내기
         private void btn_savecsv_Click(object sender, EventArgs e)
         {
@@ -146,7 +160,7 @@ namespace hoyoverseredeemmanager
         //여기서부터는 범용함수
 
         //코드 추가
-        private void add_code(string hyb_games, string hyb_codes)
+        private void add_code(string hyb_games, string hyb_codes, string hyb_descs)
         {
             //영숫자만 허용
             if (Regex.IsMatch(hyb_codes, @"^[a-zA-Z0-9]+$") == true)
@@ -169,6 +183,12 @@ namespace hoyoverseredeemmanager
                         MessageBox.Show("추가하려는 \"" + found_game + "\"의 \"" + found_code + "\" 코드는 \n이미 추가된 리딤코드입니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         goto clearcodefield;
                     }
+                    //내용에 게임명만 입력한경우 등록 불가
+                    else if (hyb_descs == "원신" || hyb_descs == "붕괴:스타레일" || hyb_descs == "젠레스 존 제로")
+                    {
+                        MessageBox.Show("허용되지 않은 내용입니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        goto clearcodefield;
+                    }
                     else
                     {
                         //목록추가로 점프
@@ -182,7 +202,7 @@ namespace hoyoverseredeemmanager
 
             //리스트에 추가
             addlist:
-                string[] rcodes = [hyb_games, hyb_c_upper];
+                string[] rcodes = [hyb_games, hyb_c_upper, hyb_descs];
                 ListViewItem rclview = new ListViewItem(rcodes);
 
                 lvw_codes.Items.Add(rclview);
@@ -193,6 +213,7 @@ namespace hoyoverseredeemmanager
             //리딤코드 입력창 비우기
             clearcodefield:
                 tb_codes.Clear();
+                tb_desc.Clear();
 
             }
             else if (hyb_codes == "")
@@ -216,6 +237,7 @@ namespace hoyoverseredeemmanager
                 {
                     bw.Write(lvw_codes.Items[i].SubItems[0].Text);
                     bw.Write(lvw_codes.Items[i].SubItems[1].Text);
+                    bw.Write(lvw_codes.Items[i].SubItems[2].Text);
                 }
             }
 
@@ -226,21 +248,96 @@ namespace hoyoverseredeemmanager
         public void readfile()
         {
             lvw_codes.Items.Clear();
-            using (BinaryReader br = new BinaryReader(File.Open(@".\rcodestore.dat", FileMode.Open)))
+
+            //이전 버전 데이터 확인용(첫째 행에서 열 3개 단위로 읽어본 후 3번째 열에 게임명이 나오는지 확인)
+            FileStream frs_chk = File.Open(@".\rcodestore.dat", FileMode.Open);
+            BinaryReader br = new BinaryReader(frs_chk);
+
+            //열 3개까지 불러오기
+            string[] chk_data = { br.ReadString(), br.ReadString(), br.ReadString() };
+
+            //다시 불러오기 위해 파일 닫기
+            br.Close();
+
+            //데이터 파일 열어서 목록에 데이터 뿌리기
+            FileStream frs_read = File.Open(@".\rcodestore.dat", FileMode.Open);
+            using (BinaryReader br2 = new BinaryReader(frs_read))
             {
-
-                while (br.BaseStream.Position != br.BaseStream.Length)
+                //이전 버전 데이터인지 확인해서 버전에 맞게 불러오기
+                if (chk_data[2] == "원신" || chk_data[2] == "붕괴:스타레일" || chk_data[2] == "젠레스 존 제로")
                 {
-                    //두 문자열씩 읽어 배열 하나로 묶기
-                    string[] b_rcodes = { br.ReadString(), br.ReadString() };
+                    MessageBox.Show("이전 버전의 데이터가 발견되었습니다.\n만일을 대비하여 데이터를 CSV로 내보내 백업하십시오.");
 
-                    //리스트에 추가
-                    ListViewItem fbrview = new ListViewItem(b_rcodes);
-                    lvw_codes.Items.Add(fbrview);
+                    while (br2.BaseStream.Position != br2.BaseStream.Length)
+                    {
+                        //두 문자열씩 읽어 배열 하나로 묶기
+                        string[] b_rcodes = { br2.ReadString(), br2.ReadString(), "" };
+
+                        //기존 데이터형식 확인
+
+                        //리스트에 추가
+                        ListViewItem fbrview = new ListViewItem(b_rcodes);
+                        lvw_codes.Items.Add(fbrview);
+                    }
+
                 }
+                else
+                {
+                    while (br2.BaseStream.Position != br2.BaseStream.Length)
+                    {
+                        //두 문자열씩 읽어 배열 하나로 묶기
+                        string[] b_rcodes = { br2.ReadString(), br2.ReadString(), br2.ReadString() };
+
+                        //기존 데이터형식 확인
+
+                        //리스트에 추가
+                        ListViewItem fbrview = new ListViewItem(b_rcodes);
+                        lvw_codes.Items.Add(fbrview);
+                    }
+                }
+
+
             }
         }
 
+
+        //CSV 가져오기
+        public void load_csv_file()
+        {
+            if (load_csv.ShowDialog() == DialogResult.OK)
+            {
+                //목록에 추가할지 덮어쓸지
+                if(MessageBox.Show("데이터를 가져옵니다.\n현재 내용을 덮어쓰게 됩니다!\n\n계속하시겠습니까?","확인",MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    //목록 비우기
+                    lvw_codes.Items.Clear();
+
+                    //파일처리
+                    string loadcsvpath = load_csv.FileName; //선택한 파일
+                    string[] csv_loaded = File.ReadAllLines(loadcsvpath); //모든 줄 긁어오기
+
+                    //목록에 추가(2번째 줄부터)
+                    for (int i = 1; i < csv_loaded.Length; i++)
+                    {
+                        //쉼표 구분으로 쪼개기
+                        string[] load_cont = csv_loaded[i].Split(',');
+
+                        //목록에 추가
+                        string[] list_csvitem = { load_cont[0], load_cont[1], load_cont[2] };
+                        ListViewItem loadcsvitem = new ListViewItem(list_csvitem);
+                        lvw_codes.Items.Add(loadcsvitem);
+
+                    }
+
+                    //데이터 파일 저장
+                    writefile();
+                }
+
+
+                
+
+            }
+        }
 
         //CSV파일 저장
         public void save_csv_file()
@@ -250,13 +347,13 @@ namespace hoyoverseredeemmanager
                 using (StreamWriter csvwrt = new StreamWriter(save_csv.FileName, false, Encoding.UTF8))
                 {
                     //열 제목
-                    csvwrt.WriteLine("게임,리딤코드");
+                    csvwrt.WriteLine("게임,리딤코드,내용");
 
                     //열 내용
                     int listcnt = lvw_codes.Items.Count;
                     for (int i = 0; i < listcnt; i++)
                     {
-                        csvwrt.WriteLine(lvw_codes.Items[i].SubItems[0].Text + "," + lvw_codes.Items[i].SubItems[1].Text);
+                        csvwrt.WriteLine(lvw_codes.Items[i].SubItems[0].Text + "," + lvw_codes.Items[i].SubItems[1].Text + "," + lvw_codes.Items[i].SubItems[2].Text);
                     }
                 }
             }
@@ -273,6 +370,7 @@ namespace hoyoverseredeemmanager
 
                 string s_games = lvw_codes.Items[lvw_codes.FocusedItem.Index].SubItems[0].Text; //선택한 열의 게임
                 string s_code = lvw_codes.Items[lvw_codes.FocusedItem.Index].SubItems[1].Text; //선택한 열의 리딤코드
+                string s_desc = "[" + s_games + "] 리딤코드 - " + lvw_codes.Items[lvw_codes.FocusedItem.Index].SubItems[2].Text + Environment.NewLine; //링크 위 설명
 
                 //선택한 정보를 가지고 URL 생성
                 switch (s_games)
@@ -299,7 +397,7 @@ namespace hoyoverseredeemmanager
                 else if (exec_mode == "copy_clip")
                 {
                     //클립보드 복사
-                    Clipboard.SetText(red_url);
+                    Clipboard.SetText(s_desc + red_url);
                     MessageBox.Show("리딤코드 등록 URL을 클립보드에 복사하였습니다.\n친구의 메신저 대화창 또는 SNS게시물에 붙여넣으십시오.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
